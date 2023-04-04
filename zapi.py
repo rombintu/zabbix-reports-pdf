@@ -28,6 +28,7 @@ class Zapi:
 
     def get_itemids_and_hostid(self, host_names: list, key = "system.cpu.util"):
         hosts = []
+        itemnames = []
         for name in host_names:
             data = self.API.item.get(
                 output="extend",
@@ -38,11 +39,11 @@ class Zapi:
                 print(f"No data for {name}")
                 continue
             itemids = []
-
             for item in data:
                 itemids.append(item["itemid"])
+                itemnames.append(item["name"])
             hosts.append({"_id": data[0]["hostid"], "itemids": itemids})
-        return hosts
+        return hosts, itemnames
     
     def get_history_by_itemid(self, hostid, itemid):
         data = self.API.history.get(

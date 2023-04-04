@@ -15,13 +15,13 @@ rcParams['axes.spines.right'] = False
 WORK_DIR = os.getcwd()
 PLOT_DIR = os.path.join(WORK_DIR, 'plots')
 REPORT_DIR = os.path.join(WORK_DIR, 'reports')
-REPORT_FILE_NAME = "report_{}.pdf"
+REPORT_FILE_NAME = "report_{}_{}.pdf"
 
-def plot(data: pd.DataFrame, filename: str):
+def plot(data: pd.DataFrame, filename: str, itemname: str):
     plt.figure(figsize=(12, 4))
     plt.grid(color='#F2F2F2', alpha=1, zorder=0)
     plt.plot(data['Date'], data['Values'], color='#087E8B', lw=1, zorder=5)
-    plt.title('Monitor stats', fontsize=17)
+    plt.title(itemname, fontsize=17)
     plt.xlabel('Period', fontsize=13)
     plt.xticks(fontsize=9)
     plt.ylabel('CPU Utilization', fontsize=13)
@@ -38,7 +38,7 @@ def generate_df_from_data(timestamps, values) -> pd.DataFrame:
 
 
 
-def construct(hosts):
+def construct(history_hosts, itemnames):
     # Delete folder if exists and create it again
     try:
         shutil.rmtree(PLOT_DIR)
@@ -47,12 +47,12 @@ def construct(hosts):
         os.mkdir(PLOT_DIR)
         
     
-    for host in hosts:
+    for host in history_hosts:
         # Save visualization
         for i, (timestamps, values) in enumerate(host["dataitems"]):
             plot(data=generate_df_from_data(
                     timestamps,values),
-                filename=os.path.join(PLOT_DIR, f'{host["_id"]}_{i}.png'))
+                filename=os.path.join(PLOT_DIR, f'{host["_id"]}_{i}.png'), itemname=itemnames[i])
     # plot(data=generate_data(), filename=f'{PLOT_DIR}/{0}.png')
     # Construct data shown in document
     counter = 0
@@ -121,23 +121,25 @@ if __name__ == "__main__":
     pars = argparse.ArgumentParser()
     pars.add_argument("--url", help="Zabbix url (http://zabbix.com:8080)")
     pars.add_argument("--token", help="Zabbix token")
+    pars.add_argument("--host", help="Hostname of host from zabbix server/agent")
     args = pars.parse_args()
 
     url = args.url
     token = args.token
-    if not url or not token:
-        print("--url or --token is None. Use --help")
+    host = args.host
+    if not url or not token or not host:
+        print("--url or --token or --host is None. Use --help")
         sys.exit(0)
 
     pdf = PDF()
     zapi = Zapi(
-        url = args.url, 
-        token = args.token,
+        url = url, 
+        token = token,
         ssl=False,
     )
-    hosts = zapi.get_itemids_and_hostid(host_names=["dev0", "Zabbix server"])
+    hosts, itemnames = zapi.get_itemids_and_hostid(host_names=[host])
     history_hosts = zapi.get_history_all_host(hosts)
-    for elem in construct(history_hosts):
+    for elem in construct(history_hosts, itemnames):
         pdf.print_page(elem)
     
     try:
@@ -145,4 +147,4 @@ if __name__ == "__main__":
     except FileExistsError:
         print(f"Dir {REPORT_DIR} already exists")
 
-    pdf.output(os.path.join(REPORT_DIR, REPORT_FILE_NAME.format(datetime.now().strftime("%d%m%y"))), 'F')
+    pdf.output(os.path.join(REPORT_DIR, REPORT_FILE_NAME.format(datetime.now().strftime("%d%m%y"), host)), 'F')
