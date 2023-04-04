@@ -54,23 +54,19 @@ def construct(history_hosts, itemnames):
                     timestamps,values),
                 filename=os.path.join(PLOT_DIR, f'{host["_id"]}_{i}.png'), itemname=itemnames[i])
     # plot(data=generate_data(), filename=f'{PLOT_DIR}/{0}.png')
-    # Construct data shown in document
     counter = 0
     pages_data = []
     temp = []
     # Get all plots
     files = os.listdir(PLOT_DIR)
-    # Sort them by month - a bit tricky because the file names are strings
     files = sorted(os.listdir(PLOT_DIR), key=lambda x: int(x.split('.')[0]))
-    # Iterate over all created visualization
     for fname in files:
-        # We want 3 per page
         if counter == 3:
             pages_data.append(temp)
             temp = []
             counter = 0
 
-        temp.append(f'{PLOT_DIR}/{fname}')
+        temp.append(os.path.join(PLOT_DIR, fname))
         counter += 1
 
     return [*pages_data, temp]
@@ -99,8 +95,6 @@ class PDF(FPDF):
         self.cell(0, 10, 'Page ' + str(self.page_no()), 0, 0, 'C')
 
     def page_body(self, images):
-        # Determine how many plots there are per page and set positions
-        # and margins accordingly
         if len(images) == 3:
             self.image(images[0], 15, 25, self.WIDTH - 30)
             self.image(images[1], 15, self.WIDTH / 2 + 5, self.WIDTH - 30)
