@@ -1,0 +1,6 @@
+plots
+*.pdf
+*env
+*cache*
+*.png
+*.jpeg
