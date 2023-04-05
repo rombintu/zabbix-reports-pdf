@@ -1,79 +1,89 @@
 from pyzabbix import ZabbixAPI
 from datetime import datetime, timedelta
 
-class Zapi:
-    def __init__(self, url, token, ssl=False):
-        self.API = ZabbixAPI(url)
-        self.API.session.verify = ssl
-        self.API.login(api_token=token)
-        print("Connected to Zabbix API Version %s" % self.API.api_version())
+class Item:
+    itemid: str
+    name: str
+    history: dict = {"timestamps": [], "values": []}
 
-    # def get_hostid_by_name(self, host_name: str):
-    #     host = self.API.host.get(
-    #         output="extend", 
-    #         search={"name":host_name}
-    #     )
-    #     if not host:
-    #         print(f"Host {host_name}: not found")
-    #         return None
-    #     return host[0]['hostid']
+    def __init__(self, name, itemid):
+        self.name = name 
+        self.itemid = itemid
 
-    # def get_hostids(self, host_names):
-    #     hostids = []
-    #     for name in host_names:
-    #         hostid = self.get_hostid_by_name(name)
-    #         if not hostid: continue
-    #         hostids.append(hostid)
-    #     return hostids
+    def set_timestamps(self, timestamps):
+        self.history["timestamps"] = timestamps
+    def set_values(self, values):
+        self.history["values"] = values
 
-    def get_itemids_and_hostid(self, host_names: list, key = "system.cpu.util"):
-        hosts = []
-        itemnames = []
-        for name in host_names:
-            data = self.API.item.get(
+class Host:
+    hostid: str
+    name: str
+    filename: str
+    items: list[Item] = []
+
+    def __init__(self, name):
+        self.name = name
+        self.filename = "_".join(name.split())
+
+    def set_hostid(self, hostid):
+        self.hostid = hostid
+
+    def add_item(self, item: Item):
+        self.items.append(item)
+
+
+class ZabbixCollector:
+    hosts: list[Host] = []
+
+    def __init__(self, url, token, ssl=False, hostnames=[]):
+        self.api = ZabbixAPI(url)
+        self.api.session.verify = ssl
+        self.api.login(api_token=token)
+        print("Connected to Zabbix api Version %s" % self.api.api_version())
+
+        for hostname in hostnames:
+            self.hosts.append(Host(name=hostname))
+
+    def collect_items_by_key(self, key="system.cpu.util"):
+        for host in self.hosts:
+            items = self.api.item.get(
                 output="extend",
                 search={"key_": key},
-                host=name,
+                host=host.name,
             )
-            if not data:
-                print(f"No data for {name}")
+            if not items:
+                print(f"No data for {host.name}")
                 continue
-            itemids = []
-            for item in data:
-                itemids.append(item["itemid"])
-                itemnames.append(item["name"])
-            hosts.append({"_id": data[0]["hostid"], "itemids": itemids})
-        return hosts, itemnames
+            host.set_hostid(items[0]["hostid"])
+            for item in items:
+                host.add_item(Item(itemid=item['itemid'], name=item['name']))
+        return
     
-    def get_history_by_itemid(self, hostid, itemid):
-        data = self.API.history.get(
-            output="extend", 
-            hostids=hostid, 
-            history=0, 
-            sortorder='ASC', 
-            sortfield="clock", 
-            itemids=itemid, 
-            time_from=int((datetime.now() - timedelta(days=1)).timestamp()),
-        )
-
-        if not data:
-            print(f"Error for {hostid}")
-            return
         
-        timestamps = []
-        values = []
-        for item in data:
-            timestamps.append(datetime.fromtimestamp(int(item['clock'])))
-            values.append(float(item['value']))
-        return timestamps, values
-        
-    def get_history_all_host(self, hosts):
-        payload = []
-        for host in hosts:
-            dataitems = []
-            for itemid in host["itemids"]:
-                timestamps, values = self.get_history_by_itemid(host['_id'], itemid)
-                dataitems.append((timestamps, values))
-            payload.append({"_id": host['_id'], "dataitems": dataitems})
-        return payload
+    def collect_history(self):
+        for host in self.hosts:
+            for item in host.items:
+                history = self.api.history.get(
+                    output="extend", 
+                    hostids=host.hostid, 
+                    history=0, 
+                    sortorder='ASC', 
+                    sortfield="clock", 
+                    itemids=item.itemid, 
+                    time_from=int((datetime.now() - timedelta(days=1)).timestamp()),
+                )
+                if not history:
+                    print(f"Error for {host.name}")
+                    return
+                timestamps = []
+                values = []
+                for h in history:
+                    timestamps.append(datetime.fromtimestamp(int(h['clock'])))
+                    values.append(float(h['value']))
+                item.set_timestamps(timestamps)
+                item.set_values(values)
+        return
     
+    def run(self):
+        self.collect_items_by_key()
+        self.collect_history()
