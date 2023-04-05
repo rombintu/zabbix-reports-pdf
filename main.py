@@ -10,19 +10,30 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=exceptions.InsecureRequestWarning)
 
+def read_hostfile(path: str):
+    lines = []
+    with open(path, "r") as f:
+        for line in f.readlines():
+            if line == "": continue
+            lines.append(line.strip())
+    if not lines:
+        print(f"Hostfile: {path} is empty")
+        sys.exit(0)
+    return lines
+
 if __name__ == "__main__":
 
     pars = argparse.ArgumentParser()
     pars.add_argument("--url", help="Zabbix url (http://zabbix.com:8080)")
     pars.add_argument("--token", help="Zabbix token")
-    pars.add_argument("--host", help="Hostname of host from zabbix server/agent")
+    pars.add_argument("--hostfile", help="Hostname of host from zabbix server/agent")
     args = pars.parse_args()
 
     url = args.url
     token = args.token
-    host = args.host
-    if not url or not token or not host:
-        print("--url or --token or --host is None. Use --help")
+    hostfile = args.hostfile
+    if not url or not token or not hostfile:
+        print("--url or --token or --hostfile are None. Use --help")
         sys.exit(0)
 
     pdf = PDF()
@@ -30,7 +41,7 @@ if __name__ == "__main__":
         url = url, 
         token = token,
         ssl=False,
-        hostnames=[host]
+        hostnames=read_hostfile(hostfile)
     )
     zapi.run()
     for elem in construct(zapi.hosts):
