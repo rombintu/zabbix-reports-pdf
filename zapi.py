@@ -30,11 +30,19 @@ class Item:
 
     @property
     def predata(self):
-        return f"""{self.name} (last, min, max, avg)
-        {self.items_predata['last']}% \
-        {self.items_predata['min']}% \
-        {self.items_predata['max']}% \
-        {self.items_predata['avg']}%"""
+        return f"""{self.name} (last, min, max, avg) \
+{self.items_predata['last']}% \
+{self.items_predata['min']}% \
+{self.items_predata['max']}% \
+{self.items_predata['avg']}%"""
+
+    @property
+    def predata_row_for_table(self):
+        return [
+            self.name, self.items_predata['last'], 
+            self.items_predata['min'], self.items_predata['max'],
+            self.items_predata['avg'],
+        ]
 
     @property
     def timestamps(self):

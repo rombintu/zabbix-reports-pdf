@@ -1,9 +1,9 @@
 import argparse, sys, os
 from datetime import datetime
-from topdf import PDF, construct
-from topdf import REPORT_DIR, REPORT_FILE_NAME
+from images import PDF, construct
+from images import REPORT_DIR, REPORT_FILE_NAME
 from zapi import ZabbixCollector
-
+from jinja2 import FileSystemLoader, Environment
 from urllib3 import exceptions
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
@@ -14,7 +14,8 @@ def read_hostfile(path: str):
     lines = []
     with open(path, "r") as f:
         for line in f.readlines():
-            if line == "": continue
+            # Skip empty lines and comments
+            if line == "" or line.startswith("#"): continue
             lines.append(line.strip())
     if not lines:
         print(f"Hostfile: {path} is empty")
@@ -36,7 +37,7 @@ if __name__ == "__main__":
         print("--url or --token or --hostfile are None. Use --help")
         sys.exit(0)
 
-    pdf = PDF()
+    # pdf = PDF()
     zapi = ZabbixCollector(
         url = url, 
         token = token,
@@ -44,12 +45,19 @@ if __name__ == "__main__":
         hostnames=read_hostfile(hostfile)
     )
     zapi.run()
-    for elem in construct(zapi.hosts):
-        pdf.print_page(elem)
-    
+    # for elem in construct(zapi.hosts):
+    #     pdf.print_page(elem)
+    # imgs, tables = construct(zapi.hosts)
     try:
         os.mkdir(REPORT_DIR)
     except FileExistsError:
         print(f"Dir {REPORT_DIR} already exists")
+    
+    title = REPORT_FILE_NAME.format(datetime.now().strftime("%d%m%y"))
+    env = Environment(loader=FileSystemLoader('templates'))
+    template = env.get_template('template.html')
+    html = template.render(title=title, images=construct(zapi.hosts))
+    # pdf.output(os.path.join(REPORT_DIR, REPORT_FILE_NAME.format(datetime.now().strftime("%d%m%y"))), 'F')
 
-    pdf.output(os.path.join(REPORT_DIR, REPORT_FILE_NAME.format(datetime.now().strftime("%d%m%y"))), 'F')
+    with open(os.path.join(REPORT_DIR, f'{title}.html'), 'w') as f:
+        f.write(html)
