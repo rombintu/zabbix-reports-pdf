@@ -1,5 +1,5 @@
 import argparse, sys, os
-from datetime import datetime
+from datetime import datetime, timedelta
 from images import PDF, construct
 from images import REPORT_DIR, REPORT_FILE_NAME
 from zapi import ZabbixCollector
@@ -53,10 +53,23 @@ if __name__ == "__main__":
     except FileExistsError:
         print(f"Dir {REPORT_DIR} already exists")
     
-    title = REPORT_FILE_NAME.format(datetime.now().strftime("%d%m%y"))
+    now_time = datetime.now()
+    yesterday = now_time - timedelta(days=1)
+    tomorrow = now_time + timedelta(days=1)
+
+    rep_time = now_time.strftime("%d-%m-%y")
+    before_rep_time = yesterday.strftime("%d-%m-%y")
+    next_rep_time = tomorrow.strftime("%d-%m-%y")
+
+    title = REPORT_FILE_NAME.format(rep_time)
     env = Environment(loader=FileSystemLoader('templates'))
     template = env.get_template('template.html')
-    html = template.render(title=title, images=construct(zapi.hosts))
+    html = template.render(
+        title=title, images=construct(zapi.hosts),
+        rep_name=rep_time, before_rep_name=before_rep_time, next_rep_name=next_rep_time,
+        before_rep_link=f'report_{before_rep_time}.html', 
+        next_rep_link=f'report_{next_rep_time}.html'
+    )
     # pdf.output(os.path.join(REPORT_DIR, REPORT_FILE_NAME.format(datetime.now().strftime("%d%m%y"))), 'F')
 
     with open(os.path.join(REPORT_DIR, f'{title}.html'), 'w') as f:

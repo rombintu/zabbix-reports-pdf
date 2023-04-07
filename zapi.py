@@ -2,6 +2,12 @@ from pyzabbix import ZabbixAPI
 from datetime import datetime, timedelta
 from statistics import mean
 
+WARN_CONST_CPU = 30
+
+
+def gen_warn_values(size):
+    return [WARN_CONST_CPU for x in range(0, size)]
+
 class Item:
     def __init__(self, name, itemid):
         self.name = name 
@@ -141,6 +147,19 @@ class ZabbixCollector:
                     round(mean(values), 4))
         return
     
+    def add_trigger(self):
+        if not self.hosts: return
+        for host in self.hosts:
+            if not host.items: return
+            warn_item = Item("CPU WARN!", "0")
+            warn_item.set_timestamps(host.items[0].timestamps)
+            warn_item.set_values(gen_warn_values(len(host.items[0].values)))
+            warn_item.set_predata(last=0, min=0, max=WARN_CONST_CPU, avg=WARN_CONST_CPU)
+            host.add_item(warn_item)
+        return
+
+
     def run(self):
         self.collect_items_by_key()
         self.collect_history()
+        self.add_trigger()

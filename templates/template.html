@@ -7,12 +7,17 @@
     <title>{{title}}</title>
 </head>
 <body>
+    <div style="display: flex; justify-content: space-between;">
+        <h3>Отчет за <a href="{{before_rep_link}}">{{before_rep_name}}</a></h3>
+        <h3>Отчет за {{rep_name}}</h3>
+        <h3>Отчет за <a href="{{next_rep_link}}">{{next_rep_name}}</a></h3>
+    </div>
     <div style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap;">
         {% for img in images %}
         <div>
             <img src="{{img.path}}" alt="" width="800">
         </div>
-        <div style="font-size: small;">
+        <div style="font-size: 10px;">
             {{img.table}}
         </div>
         {% endfor %}

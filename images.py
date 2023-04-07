@@ -29,8 +29,13 @@ def randcolor():
 def plot(data_list: tuple[str, str, pd.DataFrame], filename: str, hostname: str):
     plt.figure(figsize=(12, 4))
     plt.grid(color='#F2F2F2', alpha=1, zorder=0)
+    # plt.xlim(0, 100)
+    plt.ylim(0,100)
     for label, predata, data in data_list:
-        plt.plot(data['Date'], data['Values'], color=randcolor(), lw=1, zorder=5, label=label)
+        color = randcolor()
+        if label == "CPU WARN!":
+            color = "#FF0000"
+        plt.plot(data['Date'], data['Values'], color=color, lw=1, zorder=5, label=label)
     # plt.figtext(x=0.9, y=0.2, s=predata)
     plt.title(hostname, fontsize=14)
     plt.xlabel('Period', fontsize=9)
